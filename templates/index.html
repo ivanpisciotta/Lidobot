@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lidobot v0.7</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='30' cy='30' r='30' fill='%2300c853'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #0a1a12;
+            --surface:  #0f2218;
+            --surface2: #132b1e;
+            --border:   #1e3d2a;
+            --border2:  #2a5038;
+            --green:    #00c853;
+            --green-dim:#00c85318;
+            --red:      #ff5252;
+            --red-dim:  #ff525218;
+            --yellow:   #ffd740;
+            --white:    #ffffff;
+            --gray1:    #b0bfb8;
+            --gray2:    #7a9188;
+            --gray3:    #3d5248;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--white); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; min-height: 100vh; }
+        .app { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+        .logo { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: var(--white); display: flex; align-items: center; gap: 10px; }
+        .logo-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gray2); margin-top: 5px; letter-spacing: 1px; }
+        .header-right { display: flex; align-items: center; gap: 14px; }
+        .last-update { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gray3); }
+        .btn-refresh { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 8px 18px; background: transparent; color: var(--green); border: 1px solid var(--green); border-radius: 4px; cursor: pointer; transition: background 0.15s; }
+        .btn-refresh:hover { background: var(--green-dim); }
+
+        /* Tabs */
+        .tabs { display: flex; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+        .tab { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 10px 22px; cursor: pointer; color: var(--gray2); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+        .tab:hover { color: var(--gray1); }
+        .tab.active { color: var(--green); border-bottom-color: var(--green); }
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* Wallet cards */
+        .wallet-grid { display: flex; flex-direction: column; gap: 12px; }
+        .wallet-card { background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+        .wallet-card:first-child { border-radius: 8px 8px 0 0; }
+        .wallet-card:last-child  { border-radius: 0 0 8px 8px; }
+        .wallet-card:only-child  { border-radius: 8px; }
+        .wallet-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; cursor: pointer; border-left: 3px solid var(--green); transition: background 0.15s; }
+        .wallet-header:hover { background: var(--surface2); }
+        .wallet-alias { font-family: 'IBM Plex Mono', monospace; font-size: 17px; font-weight: 600; color: var(--white); }
+        .wallet-address { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gray2); margin-top: 4px; }
+        .wallet-right { display: flex; align-items: center; gap: 36px; }
+        .wallet-stat { text-align: right; }
+        .wallet-stat-label { font-size: 10px; color: var(--gray2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+        .wallet-stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; color: var(--white); }
+        .wallet-chevron { font-size: 14px; color: var(--gray3); transition: transform 0.2s; margin-left: 4px; }
+        .wallet-card.collapsed .wallet-chevron { transform: rotate(-90deg); }
+        .wallet-card.collapsed .wallet-body { display: none; }
+        .wallet-body { border-top: 1px solid var(--border); }
+        .no-positions { padding: 16px 24px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gray3); }
+
+        /* Position table */
+        .pos-table { width: 100%; border-collapse: collapse; }
+        .pos-table th { padding: 10px 16px; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500; color: var(--gray2); text-transform: uppercase; letter-spacing: 0.8px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+        .pos-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--white); }
+        .pos-table tr:last-child td { border-bottom: none; }
+        .pos-table tr:hover td { background: var(--surface2); }
+
+        .tag { display: inline-block; padding: 3px 9px; border-radius: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
+        .tag-long  { background: rgba(0,200,83,0.12); color: var(--green); border: 1px solid rgba(0,200,83,0.25); }
+        .tag-short { background: rgba(255,82,82,0.12); color: var(--red);   border: 1px solid rgba(255,82,82,0.25); }
+        .pnl-pos  { color: var(--green); font-weight: 600; }
+        .pnl-neg  { color: var(--red);   font-weight: 600; }
+        .pnl-zero { color: var(--gray2); }
+
+        /* Movimientos */
+        .mov-filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .mov-filters input, .mov-filters select { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); color: var(--white); border-radius: 4px; outline: none; }
+        .mov-filters input:focus, .mov-filters select:focus { border-color: var(--green); }
+        .btn-clear { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 8px 14px; background: transparent; color: var(--gray2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+        .btn-clear:hover { color: var(--white); border-color: var(--border2); }
+        .mov-stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 20px; min-width: 110px; }
+        .stat-label { font-size: 10px; color: var(--gray2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: var(--white); }
+        .mov-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .mov-table { width: 100%; border-collapse: collapse; }
+        .mov-table th { padding: 10px 14px; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500; color: var(--gray2); text-transform: uppercase; letter-spacing: 0.8px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+        .mov-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gray1); }
+        .mov-table tr:last-child td { border-bottom: none; }
+        .mov-table tr:hover td { background: var(--surface2); }
+        .alias-col { color: var(--green); font-weight: 600; }
+        .token-col { color: var(--white); font-weight: 600; }
+        .evento-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.5px; }
+        .ev-apertura    { background: rgba(0,200,83,0.15); color: var(--green); border: 1px solid rgba(0,200,83,0.3); }
+        .ev-acumulacion { background: rgba(0,200,83,0.08); color: #66e09a; border: 1px solid rgba(0,200,83,0.2); }
+        .ev-cierre-p    { background: rgba(255,82,82,0.12); color: #ff8a80; border: 1px solid rgba(255,82,82,0.25); }
+        .ev-cierre-t    { background: rgba(255,82,82,0.2); color: var(--red); border: 1px solid rgba(255,82,82,0.4); }
+        .ev-flip        { background: rgba(255,215,64,0.12); color: var(--yellow); border: 1px solid rgba(255,215,64,0.3); }
+
+        /* Market scanner */
+        .market-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .market-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+        .market-card.señal-alcista { border-color: var(--green); }
+        .market-card.señal-bajista { border-color: var(--red); }
+        .market-card.señal-volumen { border-color: var(--yellow); }
+        .market-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .market-coin { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; color: var(--white); }
+        .market-price { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--gray2); margin-top: 3px; }
+        .market-señal { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.5px; }
+        .señal-alcista-tag { background: rgba(0,200,83,0.15); color: var(--green); border: 1px solid rgba(0,200,83,0.3); }
+        .señal-bajista-tag { background: rgba(255,82,82,0.15); color: var(--red); border: 1px solid rgba(255,82,82,0.3); }
+        .señal-volumen-tag { background: rgba(255,215,64,0.15); color: var(--yellow); border: 1px solid rgba(255,215,64,0.3); }
+        .señal-none-tag { background: transparent; color: var(--gray3); border: 1px solid var(--border); }
+
+        .market-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .metric { }
+        .metric-label { font-size: 10px; color: var(--gray2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+        .metric-value { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; color: var(--white); }
+        .metric-value.pos { color: var(--green); }
+        .metric-value.neg { color: var(--red); }
+        .metric-value.neutral { color: var(--gray1); }
+
+        .market-updated { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--gray3); margin-top: 14px; text-align: right; }
+
+        .bar-container { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+        .bar-green { background: var(--green); }
+        .bar-red { background: var(--red); }
+        .bar-yellow { background: var(--yellow); }
+
+        .empty, .loading { text-align: center; padding: 48px; color: var(--gray3); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <div>
+            <div class="logo"><div class="logo-dot"></div>LIDOBOT</div>
+            <div class="logo-sub">v0.7 &nbsp;·&nbsp; Smart Money Terminal</div>
+        </div>
+        <div class="header-right">
+            <div class="last-update" id="lastUpdate"></div>
+            <button class="btn-refresh" onclick="toggleTheme()" id="themeBtn">☀ CLARO</button>
+            <button class="btn-refresh" onclick="actualizar()">↻ ACTUALIZAR</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="setTab('posiciones')">Posiciones</div>
+        <div class="tab" onclick="setTab('movimientos')">Movimientos</div>
+        <div class="tab" onclick="setTab('mercado')">Mercado</div>
+    </div>
+
+    <!-- POSICIONES -->
+    <div class="panel active" id="panel-posiciones">
+        <div class="wallet-grid" id="grid"><div class="loading">cargando posiciones...</div></div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div class="panel" id="panel-movimientos">
+        <div class="mov-filters">
+            <input type="text" id="movToken" placeholder="Token..." onkeyup="renderMovimientos()">
+            <input type="text" id="movAlias" placeholder="Alias..." onkeyup="renderMovimientos()">
+            <select id="movDir" onchange="renderMovimientos()">
+                <option value="">Todas las direcciones</option>
+                <option value="LONG">LONG</option>
+                <option value="SHORT">SHORT</option>
+            </select>
+            <select id="movEvento" onchange="renderMovimientos()">
+                <option value="">Todos los eventos</option>
+                <option value="APERTURA">Apertura</option>
+                <option value="ACUMULACION">Acumulacion</option>
+                <option value="CIERRE PARCIAL">Cierre Parcial</option>
+                <option value="CIERRE TOTAL">Cierre Total</option>
+                <option value="FLIP">Flip</option>
+            </select>
+            <button class="btn-clear" onclick="limpiarFiltros()">Limpiar</button>
+        </div>
+        <div class="mov-stats" id="movStats"></div>
+        <div class="mov-wrap">
+            <table class="mov-table">
+                <thead><tr>
+                    <th>Fecha</th><th>Alias</th><th>Token</th><th>Evento</th>
+                    <th>Dir</th><th>Posicion</th><th>Fill</th><th>Actual</th>
+                    <th>Leverage</th><th>Funding</th><th>CVD</th>
+                </tr></thead>
+                <tbody id="movTbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MERCADO -->
+    <div class="panel" id="panel-mercado">
+        <div class="market-grid" id="marketGrid"><div class="loading">cargando datos de mercado...</div></div>
+    </div>
+</div>
+
+<script>
+    let tabActual = 'posiciones';
+    let movimientos = [];
+
+    function setTab(tab) {
+        tabActual = tab;
+        document.querySelectorAll('.tab').forEach((t,i) =>
+            t.classList.toggle('active', ['posiciones','movimientos','mercado'][i] === tab));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-'+tab).classList.add('active');
+        if (tab === 'movimientos' && movimientos.length === 0) cargarMovimientos();
+        if (tab === 'mercado') cargarMercado();
+    }
+
+    function toggleTheme() {
+    const root = document.documentElement;
+    const btn = document.getElementById('themeBtn');
+    if (root.style.getPropertyValue('--bg') === '#ffffff') {
+        root.style.cssText = '';
+        btn.textContent = '☀ CLARO';
+    } else {
+        root.style.setProperty('--bg', '#ffffff');
+        root.style.setProperty('--surface', '#f5f5f5');
+        root.style.setProperty('--surface2', '#ebebeb');
+        root.style.setProperty('--border', '#d0d0d0');
+        root.style.setProperty('--white', '#0a1a12');
+        root.style.setProperty('--gray1', '#2a2a2a');
+        root.style.setProperty('--gray2', '#444444');
+        root.style.setProperty('--gray3', '#666666');
+        btn.textContent = '● OSCURO';
+    }
+}
+
+    function actualizar() {
+        if (tabActual === 'posiciones') cargarPosiciones();
+        else if (tabActual === 'movimientos') cargarMovimientos();
+        else cargarMercado();
+    }
+
+    function fmt(n,d) { if (n===null||n===undefined||isNaN(n)) return '-'; return parseFloat(n).toFixed(d??2); }
+    function fmtUSD(n) {
+        if (!n||isNaN(n)) return '-';
+        const a=Math.abs(n);
+        if(a>=1e6) return `$${(n/1e6).toFixed(2)}M`;
+        if(a>=1e3) return `$${(n/1e3).toFixed(0)}K`;
+        return `$${parseFloat(n).toFixed(0)}`;
+    }
+    function pC(n){return n>0?'pnl-pos':n<0?'pnl-neg':'pnl-zero';}
+    function pS(n){return n>0?`+${fmtUSD(n)}`:fmtUSD(n);}
+
+    function eventoClass(ev) {
+        const e=(ev||'').toUpperCase();
+        if(e==='APERTURA') return 'ev-apertura';
+        if(e==='ACUMULACION') return 'ev-acumulacion';
+        if(e==='CIERRE PARCIAL') return 'ev-cierre-p';
+        if(e==='CIERRE TOTAL') return 'ev-cierre-t';
+        if(e==='FLIP') return 'ev-flip';
+        return '';
+    }
+
+    // ── POSICIONES ────────────────────────────────────────────────────────────
+    async function cargarPosiciones() {
+        try {
+            const resp = await fetch('/api/posiciones');
+            const wallets = await resp.json();
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-GB');
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for (const w of wallets) {
+                const totalPnl = w.positions.reduce((s,p)=>s+p.unrealized_pnl,0);
+                const card = document.createElement('div');
+                card.className = 'wallet-card';
+                const pnlHtml = w.positions.length>0
+                    ? `<div class="wallet-stat"><div class="wallet-stat-label">PnL Abierto</div><div class="wallet-stat-value ${pC(totalPnl)}">${pS(totalPnl)}</div></div>` : '';
+                card.innerHTML = `
+                    <div class="wallet-header">
+                        <div>
+                            <div class="wallet-alias">${w.alias}</div>
+                            <div class="wallet-address" onclick="navigator.clipboard.writeText('${w.wallet}')" style="cursor:pointer;" title="Click para copiar"> ${w.wallet}</div>
+                        </div>
+                        <div class="wallet-right">
+                            <div class="wallet-stat"><div class="wallet-stat-label">Cuenta</div><div class="wallet-stat-value">${fmtUSD(w.account_value)}</div></div>
+                            <div class="wallet-stat"><div class="wallet-stat-label">Posiciones</div><div class="wallet-stat-value">${w.positions.length}</div></div>
+                            ${pnlHtml}
+                            <span class="wallet-chevron" onclick="toggle(this.closest('.wallet-card'))">▾</span>
+                        </div>
+                    </div>
+                    <div class="wallet-body">
+                        ${w.positions.length===0
+                            ? `<div class="no-positions">— sin posiciones abiertas</div>`
+                            : `<table class="pos-table"><thead><tr><th>Token</th><th>Direccion</th><th>Posicion</th><th>Entrada</th><th>Actual</th><th>PnL</th><th>Leverage</th></tr></thead>
+                               <tbody>${w.positions.map(p=>`<tr>
+                                <td><strong>${p.coin}</strong></td>
+                                <td><span class="tag ${p.direction==='LONG'?'tag-long':'tag-short'}">${p.direction}</span></td>
+                                <td>${fmtUSD(p.value_usd)}</td>
+                                <td>$${fmt(p.entry_price,4)}</td>
+                                <td>$${fmt(p.mark_price,4)}</td>
+                                <td class="${pC(p.unrealized_pnl)}">${pS(p.unrealized_pnl)}</td>
+                                <td>${fmt(p.leverage,0)}x</td>
+                               </tr>`).join('')}</tbody></table>`}
+                    </div>`;
+                grid.appendChild(card);
+            }
+        } catch(e) {
+            document.getElementById('grid').innerHTML=`<div class="empty">Error: ${e.message}</div>`;
+        }
+    }
+
+    function toggle(h){h.closest('.wallet-card').classList.toggle('collapsed');}
+
+    // ── MOVIMIENTOS ───────────────────────────────────────────────────────────
+    async function cargarMovimientos() {
+        try {
+            const resp = await fetch('/api/movimientos');
+            movimientos = await resp.json();
+            renderMovimientos();
+        } catch(e) {
+            document.getElementById('movTbody').innerHTML=`<tr><td colspan="11" class="empty">Error: ${e.message}</td></tr>`;
+        }
+    }
+
+    function renderMovimientos() {
+        const token=document.getElementById('movToken').value.toLowerCase();
+        const alias=document.getElementById('movAlias').value.toLowerCase();
+        const dir=document.getElementById('movDir').value;
+        const evento=document.getElementById('movEvento').value;
+        let datos=movimientos.filter(m=>{
+            if(token&&!(m.token||'').toLowerCase().includes(token)) return false;
+            if(alias&&!(m.alias||'').toLowerCase().includes(alias)) return false;
+            if(dir&&m.direction!==dir) return false;
+            if(evento&&m.evento!==evento) return false;
+            return true;
+        });
+        const longs=datos.filter(m=>m.direction==='LONG').length;
+        const shorts=datos.filter(m=>m.direction==='SHORT').length;
+        document.getElementById('movStats').innerHTML=`
+            <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${datos.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Longs</div><div class="stat-value" style="color:var(--green)">${longs}</div></div>
+            <div class="stat-card"><div class="stat-label">Shorts</div><div class="stat-value" style="color:var(--red)">${shorts}</div></div>`;
+        const tbody=document.getElementById('movTbody');
+        if(datos.length===0){tbody.innerHTML=`<tr><td colspan="11" class="empty">sin movimientos</td></tr>`;return;}
+        tbody.innerHTML=datos.map(m=>{
+            const dirClass=m.direction==='LONG'?'tag-long':'tag-short';
+            const funding=isNaN(parseFloat(m.funding))?'-':`${(parseFloat(m.funding)*100).toFixed(4)}%`;
+            return `<tr>
+                <td>${m.timestamp||''}</td>
+                <td class="alias-col">${m.alias||''}</td>
+                <td class="token-col">${m.token||''}</td>
+                <td><span class="evento-tag ${eventoClass(m.evento)}">${m.evento||''}</span></td>
+                <td><span class="tag ${dirClass}">${m.direction||''}</span></td>
+                <td>${fmtUSD(parseFloat(m.position_usd))}</td>
+                <td>$${parseFloat(m.entry_price||0).toFixed(4)}</td>
+                <td>$${parseFloat(m.current_price||0).toFixed(4)}</td>
+                <td>${m.leverage||'-'}x</td>
+                <td>${funding}</td>
+                <td>${m.cvd||'-'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function limpiarFiltros() {
+        ['movToken','movAlias'].forEach(id=>document.getElementById(id).value='');
+        ['movDir','movEvento'].forEach(id=>document.getElementById(id).value='');
+        renderMovimientos();
+    }
+
+    // ── MERCADO ───────────────────────────────────────────────────────────────
+    async function cargarMercado() {
+        try {
+            const resp = await fetch('/api/mercado');
+            const data = await resp.json();
+            const grid = document.getElementById('marketGrid');
+            grid.innerHTML = '';
+
+            if (Object.keys(data).length === 0) {
+                grid.innerHTML = '<div class="loading">esperando primer scan del market scanner...</div>';
+                return;
+            }
+
+            for (const [coin, d] of Object.entries(data)) {
+                const señal = d.señal;
+                let cardClass = '';
+                let señalTag = '<span class="market-señal señal-none-tag">SIN SEÑAL</span>';
+
+                if (señal) {
+                    if (señal.includes('ALCISTA')) {
+                        cardClass = 'señal-alcista';
+                        señalTag = `<span class="market-señal señal-alcista-tag">${señal}</span>`;
+                    } else if (señal.includes('BAJISTA')) {
+                        cardClass = 'señal-bajista';
+                        señalTag = `<span class="market-señal señal-bajista-tag">${señal}</span>`;
+                    } else {
+                        cardClass = 'señal-volumen';
+                        señalTag = `<span class="market-señal señal-volumen-tag">${señal}</span>`;
+                    }
+                }
+
+                const oiCambio = d.oi_cambio || 0;
+                const sesgoCVD = d.sesgo_cvd || 0;
+                const volMult = d.vol_multiplicador || 0;
+                const funding = d.funding || 0;
+
+                const oiClass = oiCambio > 0 ? 'pos' : oiCambio < 0 ? 'neg' : 'neutral';
+                const cvdClass = sesgoCVD > 0 ? 'pos' : sesgoCVD < 0 ? 'neg' : 'neutral';
+                const volClass = volMult >= 2 ? 'pos' : 'neutral';
+                const fundingClass = funding > 0 ? 'pos' : funding < 0 ? 'neg' : 'neutral';
+
+                // Barra de CVD
+                const cvdPct = Math.min(Math.abs(sesgoCVD), 100);
+                const cvdBarColor = sesgoCVD > 0 ? 'bar-green' : 'bar-red';
+
+                // Barra de volumen (cap a 5x = 100%)
+                const volPct = Math.min((volMult / 5) * 100, 100);
+                const volBarColor = volMult >= 2 ? 'bar-yellow' : 'bar-green';
+
+                grid.innerHTML += `
+                    <div class="market-card ${cardClass}">
+                        <div class="market-card-header">
+                            <div>
+                                <div class="market-coin">${coin}</div>
+                                <div class="market-price">$${parseFloat(d.mark_price||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:4})}</div>
+                            </div>
+                            ${señalTag}
+                        </div>
+                        <div class="market-metrics">
+                            <div class="metric">
+                                <div class="metric-label">OI Cambio</div>
+                                <div class="metric-value ${oiClass}">${oiCambio>0?'+':''}${oiCambio.toFixed(2)}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Funding</div>
+                                <div class="metric-value ${fundingClass}">${funding.toFixed(4)}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">CVD Sesgo</div>
+                                <div class="metric-value ${cvdClass}">${sesgoCVD>0?'+':''}${sesgoCVD.toFixed(1)}%</div>
+                                <div class="bar-container"><div class="bar-fill ${cvdBarColor}" style="width:${cvdPct}%"></div></div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Vol / Promedio</div>
+                                <div class="metric-value ${volClass}">${volMult.toFixed(1)}x</div>
+                                <div class="bar-container"><div class="bar-fill ${volBarColor}" style="width:${volPct}%"></div></div>
+                            </div>
+                        </div>
+                        <div class="market-updated">Actualizado: ${d.updated_at||'-'}</div>
+                    </div>`;
+            }
+        } catch(e) {
+            document.getElementById('marketGrid').innerHTML=`<div class="empty">Error: ${e.message}</div>`;
+        }
+    }
+
+    cargarPosiciones();
+    setInterval(()=>{
+        if(tabActual==='posiciones') cargarPosiciones();
+        else if(tabActual==='mercado') cargarMercado();
+    }, 30000);
+</script>
+</body>
+</html>

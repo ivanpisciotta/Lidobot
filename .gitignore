@@ -1,0 +1,8 @@
+.env
+wallets.json
+*.csv
+estado*.json
+scanner_*.json
+*.bak*
+__pycache__/
+venv/
